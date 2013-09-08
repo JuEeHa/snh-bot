@@ -5,7 +5,7 @@ concmd=['/q']
 
 activitylines=3 #how many lines
 activitytime=5*60 #in how many seconds consititues activity
-watchnicks=['shikhin','shikhin_'] #Who this bot will watch, all presumed to be same person for now
+watchnicks=['shikhin','shikhin_','shikhin__','nortti'] #Who this bot will watch, all presumed to be same person for now
 worktimes=[((0,0),(23,59))] #Work times in a ((starthour,startmin),(endhour,endmin)) format NOTE: times in UTC
 
 quitflag=[False] #ugly hack but otherwise /q would not work
@@ -17,7 +17,7 @@ pointslock=threading.Lock()
 todo=[]
 todolock=threading.Lock()
 
-IRC=[None,'#osdev-offtopic'] # Channel object and irc channel
+IRC=[None,'#shikhin-needs-help'] # Channel object and irc channel
 
 def stillrunnig():
 	quitflaglock.acquire()
@@ -93,6 +93,23 @@ def parse((line,irc)):
 			t.reverse()
 			irc.send('PRIVMSG %s :%s'%(chan,'; '.join(t)))
 			todolock.release()
+		elif line[3]==':snh-bot:' and line[4]=='todo-completed':
+			if len(line)<6:
+				irc.send('PRIVMSG %s :Usage: snh-bot: todo-completed TODO'%chan)
+			else:
+				todolock.acquire()
+				t=filter((lambda x:x[0][1]==' '.join(line[5:])),zip(todo,range(len(todo))))
+				if len(t)>0:
+					pointslock.acquire()
+					points[0]+=1
+					pointslock.release()
+					for i,j in t:
+						del todo[j]
+				else:
+					irc.send('PRIVMSG %s :"%s" not found'%(chan,' '.join(line[5:])))
+					print t
+				todolock.release()
+				
 		elif nick in watchnicks and isworktime():
 			activitylock.acquire()
 			activity.append(time.time())
