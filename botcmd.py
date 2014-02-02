@@ -5,7 +5,7 @@ concmd=['/q']
 
 activitylines=3 #how many lines
 activitytime=5*60 #in how many seconds consititues activity
-watchnicks=['shikhin','shikhin_','shikhin__','nortti'] #Who this bot will watch, all presumed to be same person for now
+watchnicks=['shikhin','shikhin_','shikhin__','shikhout','shikherr','draumr','idraumr'] #Who this bot will watch, all presumed to be same person for now
 worktimes=[] #Work times in a ((starthour,startmin),(endhour,endmin)) format NOTE: times in UTC
 timeslock=threading.Lock()
 
