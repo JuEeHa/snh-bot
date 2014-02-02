@@ -6,7 +6,8 @@ concmd=['/q']
 activitylines=3 #how many lines
 activitytime=5*60 #in how many seconds consititues activity
 watchnicks=['shikhin','shikhin_','shikhin__','nortti'] #Who this bot will watch, all presumed to be same person for now
-worktimes=[((0,0),(23,59))] #Work times in a ((starthour,startmin),(endhour,endmin)) format NOTE: times in UTC
+worktimes=[] #Work times in a ((starthour,startmin),(endhour,endmin)) format NOTE: times in UTC
+timeslock=threading.Lock()
 
 quitflag=[False] #ugly hack but otherwise /q would not work
 quitflaglock=threading.Lock()
@@ -109,7 +110,54 @@ def parse((line,irc)):
 					irc.send('PRIVMSG %s :"%s" not found'%(chan,' '.join(line[5:])))
 					print t
 				todolock.release()
-				
+		elif line[3]==':snh-bot:' and line[4]=='times-list':
+			timeslock.acquire()
+			t=map((lambda ((sh,sm),(eh,em)): '%i:%i-%i:%i'%(sh,sm,eh,em)), worktimes)
+			timeslock.release()
+			irc.send('PRIVMSG %s :%s'%(chan,'; '.join(t)))
+		elif line[3]==':snh-bot:' and line[4]=='times-add':
+			if len(line)<7:
+				irc.send('PRIVMSG %s :Usage: snh-bot: times-add START END'%chan)
+			else:
+				run=True
+				try:
+					sh,sm=map(int, line[5].split(':'))
+					eh,em=map(int, line[6].split(':'))
+				except ValueError:
+					irc.send('PRIVMSG %s :START and END must be in "hh:mm" format'%chan)
+					run=False
+				if run:
+					timeslock.acquire()
+					worktimes.append(((sh,sm),(eh,em)))
+					timeslock.release()
+		elif line[3]==':snh-bot:' and line[4]=='times-del':
+			if len(line)<7:
+				irc.send('PRIVMSG %s :Usage: snh-bot: times-del START END'%chan)
+			else:
+				run=True
+				try:
+					sh,sm=map(int, line[5].split(':'))
+					eh,em=map(int, line[6].split(':'))
+				except ValueError:
+					irc.send('PRIVMSG %s :START and END must be in "hh:mm" format'%chan)
+					run=False
+				if run:
+					timeslock.acquire()
+					if ((sh,sm),(eh,em)) in worktimes:
+						del worktimes[worktimes.index(((sh,sm),(eh,em)))]
+					else:
+						irc.send('PRIVMSG %s :%i:%i-%i:%i not found'%(((sh,sm),(eh,em)),chan))
+					timeslock.release()
+		elif line[3]==':snh-bot:' and line[4]=='help':
+			help={'points': 'snh-bot: points    displays points',
+			      'todo-add': 'snh-bot: todo-add PRIORITY TODO    add new task',
+			      'todo-list': 'snh-bot: todo-list    list tasks, in order of priority',
+			      'todo-completed': 'snh-bot: todo-completed TODO    marks task as done, gives points',
+			      'times-add': 'snh-bot: times-add START END    add new timerange to worktimes',
+			      'times-list': 'snh-bot: times-list    list worktimes, in storage order',
+			      'times-del': 'snh-bot: times-del START END    removes timerange from worktimes'}
+			irc.send('PRIVMSG %s :%s'%(chan,' '.join([i for i in help])))
+		
 		elif nick in watchnicks and isworktime():
 			activitylock.acquire()
 			activity.append(time.time())
