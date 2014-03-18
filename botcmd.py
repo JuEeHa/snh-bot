@@ -73,6 +73,10 @@ def parse((line,irc)):
 			pointslock.acquire()
 			irc.send('PRIVMSG %s :%s'%(chan,str(points[0])))
 			pointslock.release()
+		if line[3]==':snh-bot:' and line[4]=='reset-points':
+			pointslock.acquire()
+			points[0]=0
+			pointslock.release()
 		elif line[3]==':snh-bot:' and line[4]=='todo-add':
 			if len(line)<7:
 				irc.send('PRIVMSG %s :Usage: snh-bot: todo-add PRIORITY TODO'%chan)
@@ -108,7 +112,18 @@ def parse((line,irc)):
 						del todo[j]
 				else:
 					irc.send('PRIVMSG %s :"%s" not found'%(chan,' '.join(line[5:])))
-					print t
+				todolock.release()
+		elif line[3]==':snh-bot:' and line[4]=='todo-del':
+			if len(line)<6:
+				irc.send('PRIVMSG %s :Usage: snh-bot: todo-del TODO'%chan)
+			else:
+				todolock.acquire()
+				t=filter((lambda x:x[0][1]==' '.join(line[5:])),zip(todo,range(len(todo))))
+				if len(t)>0:
+					for i,j in t:
+						del todo[j]
+				else:
+					irc.send('PRIVMSG %s :"%s" not found'%(chan,' '.join(line[5:])))
 				todolock.release()
 		elif line[3]==':snh-bot:' and line[4]=='times-list':
 			timeslock.acquire()
@@ -150,9 +165,11 @@ def parse((line,irc)):
 					timeslock.release()
 		elif line[3]==':snh-bot:' and line[4]=='help':
 			help={'points': 'snh-bot: points    displays points',
+			      'reset-points': 'snh-bot: reset-points    well duh',
 			      'todo-add': 'snh-bot: todo-add PRIORITY TODO    add new task',
 			      'todo-list': 'snh-bot: todo-list    list tasks, in order of priority',
 			      'todo-completed': 'snh-bot: todo-completed TODO    marks task as done, gives points',
+			      'todo-del': 'snh-bot: todo-del TODO    removes task',
 			      'times-add': 'snh-bot: times-add START END    add new timerange to worktimes',
 			      'times-list': 'snh-bot: times-list    list worktimes, in storage order',
 			      'times-del': 'snh-bot: times-del START END    removes timerange from worktimes'}
